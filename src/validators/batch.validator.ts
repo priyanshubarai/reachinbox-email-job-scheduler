@@ -5,7 +5,6 @@ const MAX_HOURLY_LIMIT = 10000;
 const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9._:-]{1,200}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Normalized, validated payload handed from the controller to the service. */
 export interface CreateBatchInput {
   userId: number;
   subject: string;
@@ -21,11 +20,7 @@ export type ValidationResult =
   | { ok: true; data: CreateBatchInput }
   | { ok: false; error: string };
 
-/**
- * Validates and normalizes an incoming create-batch request body.
- * Returns a discriminated result so the controller can map failures
- * to a 400 response without duplicating the rules.
- */
+
 export function validateCreateBatchRequest(body: unknown): ValidationResult {
   const {
     userId,

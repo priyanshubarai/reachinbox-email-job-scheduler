@@ -5,7 +5,7 @@ import morgan from "morgan";
 import helmet from "helmet";
 import slowDown from "express-slow-down";
 import cors from 'cors';
-import router from "./routes/route.js";
+import router from "./routes/batch.route.js";
 
 dotenv.config();
 
