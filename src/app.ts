@@ -52,6 +52,9 @@ app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
 
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 app.use("/api", limiter, (req: Request, res: Response) => {
   return res.status(200).json({ message: "Server is Running👍" });
 });
