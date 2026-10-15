@@ -4,14 +4,9 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import helmet from "helmet";
 import slowDown from "express-slow-down";
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
 import cors from 'cors';
 
 dotenv.config();
-
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle({ client: sql });
 
 
 const limiter = slowDown({
