@@ -49,6 +49,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
+    "jiti": "^2.7.0",
     "nodemon": "^3.1.14",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

@@ -5,6 +5,7 @@ import morgan from "morgan";
 import helmet from "helmet";
 import slowDown from "express-slow-down";
 import cors from 'cors';
+import router from "./routes/route.js";
 
 dotenv.config();
 
@@ -39,7 +40,7 @@ app.use(
   }),
 );
 
-var corsOptions = {
+const corsOptions = {
   // origin: 'http://example.com',
   // optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
@@ -50,7 +51,9 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
-app.use("/api", limiter, (req: Request, res: Response) => {
+app.use("/api", limiter);
+app.use("/api", router);
+app.use("/api", (req: Request, res: Response) => {
   return res.status(200).json({ message: "Server is Running👍" });
 });
 

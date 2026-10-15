@@ -6,7 +6,6 @@ import {
   outboxEventsTable,
   usersTable,
 } from "../db/schema.js";
-import { HttpError } from "../errors/http-error.js";
 import type { CreateBatchInput } from "../validators/batch.validator.js";
 
 export type EmailBatch = typeof emailBatchesTable.$inferSelect;
@@ -17,13 +16,10 @@ export interface ScheduledBatchResult {
   emails: ScheduledEmail[];
 }
 
-/**
- * Persists an email batch together with its scheduled emails and the
- * matching outbox events, all inside a single transaction.
- */
+
 export async function createEmailBatch(
   input: CreateBatchInput,
-): Promise<ScheduledBatchResult> {
+): Promise<ScheduledBatchResult | null> {
   const {
     userId,
     subject,
@@ -44,7 +40,7 @@ export async function createEmailBatch(
       .limit(1);
 
     if (!user) {
-      throw new HttpError(404, "User not found");
+      return null;
     }
 
     const [batch] = await tx
