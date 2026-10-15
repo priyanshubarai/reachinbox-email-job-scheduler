@@ -24,6 +24,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 /** POST /batches — validate the request, delegate to the service, shape the response. */
 export async function createBatch(req: Request, res: Response) {
+  console.log("Recieved request at /api/batches");
   const validation = validateCreateBatchRequest(req.body);
 
   if (!validation.ok) {

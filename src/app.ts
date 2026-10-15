@@ -53,10 +53,6 @@ app.get("/health", (_req, res) => {
 });
 app.use("/api", limiter);
 app.use("/api", router);
-app.use("/api", (req: Request, res: Response) => {
-  return res.status(200).json({ message: "Server is Running👍" });
-});
-
 
 app
   .listen(port, () => {

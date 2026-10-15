@@ -1,5 +1,5 @@
 import "dotenv/config";
-import redisConnection from "./email.redis.js";
+import redisConnection from "../email.redis.js";
 
 async function main() {
     try {

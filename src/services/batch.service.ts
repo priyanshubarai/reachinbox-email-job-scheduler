@@ -20,6 +20,7 @@ export interface ScheduledBatchResult {
 export async function createEmailBatch(
   input: CreateBatchInput,
 ): Promise<ScheduledBatchResult | null> {
+  
   const {
     userId,
     subject,

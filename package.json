@@ -22,7 +22,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "worker": "tsx src/worker-main.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -34,7 +35,8 @@
     "express-slow-down": "^3.1.0",
     "helmet": "^8.1.0",
     "ioredis": "^6.0.0",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "nodemailer": "^10.1.1"
   },
   "devDependencies": {
     "@eslint/css": "^1.0.0",
@@ -46,6 +48,7 @@
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.9.9",
+    "@types/nodemailer": "^8.0.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
