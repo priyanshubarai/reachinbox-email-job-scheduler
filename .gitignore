@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# environment variables (DO NOT COMMIT REAL SECRETS)
+.env
+.env.local
+.env.*.local
+
+# allow example env file
+!.env.example
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# build output
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/

@@ -1,0 +1,55 @@
+{
+  "name": "carbonsync-backend",
+  "version": "1.0.0",
+  "description": "carbonsync backend server code",
+  "homepage": "https://github.com/priyanshubarai/CarbonSync-Backend#readme",
+  "bugs": {
+    "url": "https://github.com/priyanshubarai/CarbonSync-Backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/priyanshubarai/CarbonSync-Backend.git"
+  },
+  "license": "ISC",
+  "author": "priyanshubarai45",
+  "type": "module",
+  "main": "app.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "dev": "tsx watch src/app.ts",
+    "lint": "eslint .",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx ./src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "express-slow-down": "^3.1.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "@eslint/css": "^1.0.0",
+    "@eslint/js": "^10.0.1",
+    "@eslint/json": "^1.2.0",
+    "@eslint/markdown": "^8.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.5.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.2"
+  }
+}
