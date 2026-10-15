@@ -8,6 +8,13 @@
       "when": 1792048258435,
       "tag": "0000_clammy_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792060416420,
+      "tag": "0001_slimy_pet_avengers",
+      "breakpoints": true
     }
   ]
 }
