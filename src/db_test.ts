@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
 import { usersTable } from './db/schema.js';
+import logger from './lib/logger.js';
   
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -13,10 +14,10 @@ async function main() {
   };
 
   await db.insert(usersTable).values(user);
-  console.log('New user created!')
+  logger.info('New user created')
 
   const users = await db.select().from(usersTable);
-  console.log('Getting all users from the database: ', users)
+  logger.info('Getting all users from the database', { count: users.length })
   /*
   const users: {
     id: number;
@@ -32,10 +33,10 @@ async function main() {
       age: 31,
     })
     .where(eq(usersTable.email, user.email));
-  console.log('User info updated!')
+  logger.info('User info updated')
 
   await db.delete(usersTable).where(eq(usersTable.email, user.email));
-  console.log('User deleted!')
+  logger.info('User deleted')
 }
 
 main();

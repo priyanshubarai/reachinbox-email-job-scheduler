@@ -4,6 +4,7 @@ import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { inArray } from "drizzle-orm";
 import db from "../db/index.js";
+import logger, { serializeError } from "../lib/logger.js";
 import {
   emailBatchesTable,
   emailsTable,
@@ -13,22 +14,6 @@ import {
   usersTable,
 } from "../db/schema.js";
 
-/**
- * ReachInbox development/test fixture seeder.
- *
- * Safe by construction:
- *  - Requires SEED_TEST_DATA=true, ALLOW_NEON_TEST_SEED=true and
- *    NODE_ENV in {development, test}.
- *  - Only inserts. Never truncates, drops or deletes.
- *  - Deterministic ids (namespace "reachinbox-test-v1") + ON CONFLICT DO NOTHING,
- *    so re-runs never duplicate rows and never reset delivery status.
- *  - Never prints DATABASE_URL / REDIS_URL / SMTP credentials.
- *
- * Modes:
- *  - Default (Mode A): database fixtures only. Redis untouched, no emails sent.
- *  - --enqueue (Mode B): additionally publish explicitly selected, still-scheduled
- *    test emails to the existing BullMQ queue. This does NOT start the worker.
- */
 
 const SEED_NAMESPACE = "reachinbox-test-v1";
 const TEST_DOMAIN = "reachinbox-test-v1.example.com";
@@ -39,10 +24,6 @@ const MAX_LARGE_BATCH_COUNT = 1000;
 
 /** Batches whose still-scheduled emails are safe to enqueue in Mode B. */
 const ENQUEUE_SAFE_BATCH_KEYS = new Set(["batch-soon", "batch-ratelimit"]);
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 type EmailStatus = "scheduled" | "sent" | "failed" | "sending" | "unknown";
 
@@ -195,7 +176,7 @@ function seedUuid(kind: string, key: string): string {
 // ---------------------------------------------------------------------------
 
 function printUsage(): void {
-  console.log(
+  logger.info(
     [
       "",
       `${SEED_NAMESPACE} — ReachInbox development/test fixture seeder`,
@@ -280,7 +261,7 @@ function assertSafetyGates(): void {
   }
 
   if (problems.length > 0) {
-    console.error(
+    logger.error(
       "\nRefusing to run — safety gates are not satisfied:\n" +
         problems.map((p) => `  - ${p}`).join("\n") +
         "\n\nSee `npm run db:seed:test -- --help`.\n",
@@ -288,7 +269,7 @@ function assertSafetyGates(): void {
     process.exit(1);
   }
 
-  console.log("Safety gates: passed (values intentionally not printed).");
+  logger.info("Safety gates: passed (values intentionally not printed).");
 }
 
 // ---------------------------------------------------------------------------
@@ -1385,19 +1366,19 @@ function printSummary(summary: SeedSummary, mode: string): void {
       c.inserted,
     ).padEnd(5)} skipped=${c.skipped}`;
 
-  console.log(`\nSeed summary (${mode}):`);
-  console.log(line("users", summary.users));
-  console.log(line("senders", summary.senders));
-  console.log(line("batches", summary.batches));
-  console.log(line("emails", summary.emails));
-  console.log(line("attempts", summary.attempts));
-  console.log(line("outbox", summary.outbox));
+  logger.info(`\nSeed summary (${mode}):`);
+  logger.info(line("users", summary.users));
+  logger.info(line("senders", summary.senders));
+  logger.info(line("batches", summary.batches));
+  logger.info(line("emails", summary.emails));
+  logger.info(line("attempts", summary.attempts));
+  logger.info(line("outbox", summary.outbox));
 
-  console.log("\nEmails by status:");
+  logger.info("\nEmails by status:");
   for (const status of ["scheduled", "sent", "failed", "sending", "unknown"]) {
     const c = summary.emailsByStatus.get(status);
     if (!c) continue;
-    console.log(
+    logger.info(
       `  ${status.padEnd(10)} planned=${String(c.planned).padEnd(5)} inserted=${String(
         c.inserted,
       ).padEnd(5)} skipped=${c.skipped}`,
@@ -1459,12 +1440,12 @@ async function runEnqueue(plan: Plan): Promise<void> {
   );
 
   if (candidates.length === 0) {
-    console.log("\n--enqueue: no safe scheduled candidates found; nothing queued.");
+    logger.info("\n--enqueue: no safe scheduled candidates found; nothing queued.");
     return;
   }
 
   if (!(await probeRedis())) {
-    console.warn(
+    logger.warn(
       "\n--enqueue: Redis is not reachable — skipping queue integration. " +
         "Database fixtures were still seeded.",
     );
@@ -1512,12 +1493,12 @@ async function runEnqueue(plan: Plan): Promise<void> {
       enqueued += 1;
     }
 
-    console.log(`\n--enqueue: published ${enqueued} job(s) with deterministic jobIds.`);
-    console.warn(
+    logger.info(`\n--enqueue: published ${enqueued} job(s) with deterministic jobIds.`);
+    logger.warn(
       "WARNING: starting the worker now will send real test emails through Ethereal SMTP.",
     );
   } catch (error) {
-    console.warn(
+    logger.warn(
       "\n--enqueue: queue integration failed — " +
         (error instanceof Error ? error.message : String(error)),
     );
@@ -1539,7 +1520,7 @@ async function main(): Promise<number> {
   try {
     args = parseArgs(process.argv.slice(2));
   } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
+    logger.error(error instanceof Error ? error.message : String(error));
     printUsage();
     return 1;
   }
@@ -1559,7 +1540,7 @@ async function main(): Promise<number> {
   if (args.dryRun) {
     const summary = describeState(plan, existing);
     printSummary(summary, "dry-run — nothing written");
-    console.log(
+    logger.info(
       "\nDry run only: no database writes, no Redis calls, no emails sent.",
     );
     return 0;
@@ -1571,7 +1552,7 @@ async function main(): Promise<number> {
   if (args.enqueue) {
     await runEnqueue(plan);
   } else {
-    console.log(
+    logger.info(
       "\nMode A (database fixtures only): Redis untouched, no emails sent.",
     );
   }
@@ -1585,10 +1566,7 @@ main()
     process.exit(code);
   })
   .catch(async (error) => {
-    console.error(
-      "\nSeed failed:",
-      error instanceof Error ? error.message : error,
-    );
+    logger.error("Seed failed", { error: serializeError(error) });
     await db.$client.end().catch(() => undefined);
     process.exit(1);
   });

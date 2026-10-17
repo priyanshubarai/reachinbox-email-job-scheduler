@@ -6,6 +6,7 @@ import {
         outboxEventsTable,
 } from "../db/schema.js";
 import { emailQueue } from "./email.queue.js";
+import logger, { serializeError } from "../lib/logger.js";
 
 const BATCH_SIZE = 50;
 const POLL_INTERVAL_MS = 1000;
@@ -19,6 +20,10 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
                 )
                 .orderBy(asc(outboxEventsTable.createdAt))
                 .limit(BATCH_SIZE);
+
+        if (events.length > 0) {
+                logger.debug("Outbox dispatch cycle", { examined: events.length });
+        }
 
         let published = 0;
 
@@ -34,9 +39,11 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
                                 .limit(1);
 
                         if (!email) {
-                                console.error(
-                                        `Outbox event ${event.id} references missing email ${event.aggregateId}`,
-                                );
+                                logger.warn("Outbox event references missing email", {
+                                        outboxEventId: event.id,
+                                        eventType: event.eventType,
+                                        aggregateId: event.aggregateId,
+                                });
                                 continue;
                         }
 
@@ -48,6 +55,12 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
                                                 processedAt: new Date(),
                                         })
                                         .where(eq(outboxEventsTable.id, event.id));
+
+                                logger.debug("Outbox event skipped: email not scheduled", {
+                                        outboxEventId: event.id,
+                                        emailId: email.id,
+                                        emailStatus: email.status,
+                                });
 
                                 continue;
                         }
@@ -78,11 +91,24 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
                                 .where(eq(outboxEventsTable.id, event.id));
 
                         published++;
+
+                        logger.debug("Outbox event dispatched to queue", {
+                                outboxEventId: event.id,
+                                eventType: event.eventType,
+                                emailId: email.id,
+                                delayMs: delay,
+                        });
                 } catch (error) {
                         const message =
                                 error instanceof Error ? error.message : String(error);
 
-                        console.error(`Outbox dispatch failed for ${event.id}:`, message);
+                        logger.error("Outbox event dispatch failed", {
+                                outboxEventId: event.id,
+                                eventType: event.eventType,
+                                aggregateId: event.aggregateId,
+                                attempt: event.attempts + 1,
+                                error: serializeError(error),
+                        });
 
                         await db
                                 .update(outboxEventsTable)
@@ -93,9 +119,16 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
                                 })
                                 .where(eq(outboxEventsTable.id, event.id))
                                 .catch((dbError) => {
-                                        console.error("Could not update outbox event:", dbError);
+                                        logger.error("Could not update outbox event after failure", {
+                                                outboxEventId: event.id,
+                                                error: serializeError(dbError),
+                                        });
                                 });
                 }
+        }
+
+        if (published > 0) {
+                logger.info("Outbox dispatch cycle complete", { published });
         }
 
         return published;
@@ -107,13 +140,18 @@ const sleep = (ms: number) =>
 export async function runOutboxDispatcher(
         signal: AbortSignal,
 ): Promise<void> {
-        console.log("Outbox dispatcher started");
+        logger.info("Outbox dispatcher started", {
+                pollIntervalMs: POLL_INTERVAL_MS,
+                batchSize: BATCH_SIZE,
+        });
 
         while (!signal.aborted) {
                 try {
                         await dispatchPendingOutboxOnce();
                 } catch (error) {
-                        console.error("Outbox polling failed:", error);
+                        logger.error("Outbox polling cycle failed", {
+                                error: serializeError(error),
+                        });
                 }
 
                 if (!signal.aborted) {
@@ -121,5 +159,5 @@ export async function runOutboxDispatcher(
                 }
         }
 
-        console.log("Outbox dispatcher stopped");
+        logger.info("Outbox dispatcher stopped");
 }

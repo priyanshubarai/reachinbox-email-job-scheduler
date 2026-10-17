@@ -1,12 +1,13 @@
 import "dotenv/config";
 import redisConnection from "../email.redis.js";
+import logger, { serializeError } from "../../lib/logger.js";
 
 async function main() {
     try {
         const pong = await redisConnection.ping();
-        console.log("Redis is connected ",pong);
+        logger.info("Redis is connected", { response: pong });
     } catch (err) {
-        console.log("Redis test failed :" ,err);
+        logger.error("Redis test failed", { error: serializeError(err) });
     }finally{
         await redisConnection.quit();
     }

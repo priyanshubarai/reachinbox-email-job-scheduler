@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { createEmailBatch, findExistingBatch } from "../services/batch.service.js";
 import { validateCreateBatchRequest } from "../validators/batch.validator.js";
+import logger, { serializeError } from "../lib/logger.js";
 
 function isUniqueConstraintError(error: unknown): boolean {
   let current: unknown = error;
@@ -24,10 +25,14 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 /** POST /batches — validate the request, delegate to the service, shape the response. */
 export async function createBatch(req: Request, res: Response) {
-  console.log("Recieved request at /api/batches");
+  logger.info("Batch scheduling request received");
+
   const validation = validateCreateBatchRequest(req.body);
 
   if (!validation.ok) {
+    logger.warn("Batch scheduling request rejected", {
+      reason: "validation",
+    });
     return res.status(400).json({ error: validation.error });
   }
 
@@ -37,8 +42,18 @@ export async function createBatch(req: Request, res: Response) {
     const result = await createEmailBatch(input);
 
     if (!result) {
+      logger.warn("Batch scheduling request rejected", {
+        reason: "user-not-found",
+        userId: input.userId,
+      });
       return res.status(404).json({ error: "User not found" });
     }
+
+    logger.info("Email batch scheduled", {
+      userId: input.userId,
+      batchId: result.batch.id,
+      emailCount: result.emails.length,
+    });
 
     return res.status(201).json({
       message: "Email batch scheduled successfully",
@@ -53,6 +68,11 @@ export async function createBatch(req: Request, res: Response) {
         const existing = await findExistingBatch(input.idempotencyKey);
 
         if (existing) {
+          logger.info("Returning existing email batch", {
+            batchId: existing.batch.id,
+            emailCount: existing.emails.length,
+          });
+
           return res.status(200).json({
             message: "Existing batch returned",
             batch: existing.batch,
@@ -60,11 +80,16 @@ export async function createBatch(req: Request, res: Response) {
           });
         }
       } catch (lookupError) {
-        console.error("Idempotency lookup failed:", lookupError);
+        logger.error("Idempotency lookup failed", {
+          error: serializeError(lookupError),
+        });
       }
     }
 
-    console.error("Scheduling request failed:", error);
+    logger.error("Scheduling request failed", {
+      userId: input.userId,
+      error: serializeError(error),
+    });
 
     return res.status(500).json({
       error: "Unable to schedule email batch",
