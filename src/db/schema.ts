@@ -97,6 +97,9 @@ export const emailsTable = pgTable(
     senderId: uuid().references(() => sendersTable.id),
 
     recipient: varchar({ length: 320 }).notNull(),
+    // Optional per-recipient name used to render {{name}} in the subject/body.
+    // Null when the caller did not supply one.
+    recipientName: varchar({ length: 255 }),
     subject: varchar({ length: 998 }).notNull(),
     body: text().notNull(),
 

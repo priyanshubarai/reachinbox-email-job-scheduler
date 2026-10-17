@@ -24,7 +24,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed:test": "tsx src/scripts/test-feed.ts",
-    "worker": "tsx src/worker-main.ts"
+    "worker": "tsx src/worker-main.ts",
+    "test": "node --import tsx --test-concurrency=1 --experimental-test-module-mocks --test \"tests/**/*.test.ts\"",
+    "test:unit": "node --import tsx --test-concurrency=1 --test \"tests/rate-limiter.*.test.ts\"",
+    "test:integration": "node --import tsx --test-concurrency=1 --experimental-test-module-mocks --test \"tests/worker.*.test.ts\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -38,7 +41,8 @@
     "ioredis": "^6.0.0",
     "morgan": "^1.10.1",
     "nodemailer": "^10.1.1",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/css": "^1.0.0",
