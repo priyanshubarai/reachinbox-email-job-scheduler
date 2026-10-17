@@ -1,5 +1,5 @@
 
-import { asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lte } from "drizzle-orm";
 import db from "../db/index.js";
 import {
         emailsTable,
@@ -15,9 +15,11 @@ export async function dispatchPendingOutboxOnce(): Promise<number> {
         const events = await db
                 .select()
                 .from(outboxEventsTable)
-                .where(
+                .where(and(
+                        eq(outboxEventsTable.status, "pending"),
+                        eq(outboxEventsTable.eventType, "email.schedule"),
                         lte(outboxEventsTable.availableAt, new Date()),
-                )
+                ))
                 .orderBy(asc(outboxEventsTable.createdAt))
                 .limit(BATCH_SIZE);
 

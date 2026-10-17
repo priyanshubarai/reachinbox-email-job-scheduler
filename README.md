@@ -29,6 +29,7 @@ important ones:
 | `REDIS_URL` | Redis connection string (BullMQ) |
 | `ETHEREAL_HOST` / `ETHEREAL_PORT` / `ETHEREAL_USER` / `ETHEREAL_PASS` | Ethereal SMTP credentials |
 | `WORKER_CONCURRENCY` | BullMQ worker concurrency (default `2`) |
+| `SENDER_MIN_INTERVAL_MS` | Minimum spacing between two sends by the same sender, in ms (`0` = disabled) |
 | `LOG_LEVEL` | Minimum log level (see below) |
 
 ## Scripts
@@ -153,3 +154,54 @@ handlers.
 > Note: the development seed/test scripts (`src/scripts/test-feed.ts`,
 > `src/db_test.ts`, `src/utils/test/redis-test.ts`) also log through Winston, so
 > their output now carries a timestamp/level prefix (or JSON in production).
+
+## Rate limiting
+
+Outbound sends are gated per **sender** and per **tenant (user)** by a single
+atomic Redis Lua script in `src/utils/rate-limiter.ts` (`reserveSendCapacity`).
+The worker calls it immediately before claiming an email, so a job that is over
+quota is *delayed* rather than sent or failed.
+
+### What it enforces
+
+| Check | Scope | Source |
+| --- | --- | --- |
+| Sender hourly quota | One sender | `senders.hourlyLimit` |
+| Tenant hourly quota | One user (all their senders) | `users.tenantHourlyLimit` (default `100`) |
+| Minimum send spacing | One sender | `SENDER_MIN_INTERVAL_MS` |
+
+The window is a **sliding 60 minutes** (overridable via `windowMs`). Every check
+uses **Redis server time**, never the worker clock, so multiple workers agree.
+
+### Behaviour
+
+- A reservation is recorded in a per-sender and a per-tenant sorted set
+  (member = `emailId`, score = reservation time).
+- Reservations are **idempotent by `emailId`**: re-processing the same job never
+  consumes capacity twice.
+- On a breach the job is moved to the delayed set until capacity frees up
+  (`job.moveToDelayed` + `DelayedError`) and **nothing is consumed**. `retryAt`
+  is the largest of the violated deadlines.
+- Once a reservation is taken (sending is about to begin) it is **not released**
+  — even if SMTP returns an ambiguous error — it simply ages out of the window.
+  This stops a flapping SMTP endpoint from exceeding the quota.
+- Keys are hash-tagged by user id (`rl:{u:<userId>}:…`) so the tenant set is
+  shared across all of a user's senders while every key the script touches stays
+  in one Redis Cluster slot.
+- Key TTLs are `window + minInterval + 60s`.
+- A sender with no configured sender (API-created batches have no sender id)
+  still has its **tenant** quota enforced.
+- If a sender has a Slack webhook (`senders.slackWebhookUrl`), a rate-limit block
+  posts a throttled alert (at most one per sender per 5 minutes).
+
+### Inspecting the keys
+
+```bash
+pnpm run worker     # emits "Email send rate-limited; delaying job" with reason/delayMs
+
+# e.g. redis-cli
+# ZRANGE rl:{u:1}:sender:<senderId>:res 0 -1 WITHSCORES
+# ZCARD  rl:{u:1}:tenant:res
+```
+
+Reasons reported: `sender-hourly`, `tenant-hourly`, `sender-spacing`.

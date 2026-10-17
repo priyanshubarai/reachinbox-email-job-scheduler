@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "tenantHourlyLimit" integer DEFAULT 100 NOT NULL;

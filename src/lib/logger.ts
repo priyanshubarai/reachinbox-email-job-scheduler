@@ -136,7 +136,7 @@ export const logger: Logger = createLogger({
   levels: LOG_LEVELS,
   level: resolveLevel(),
   format: isProduction ? productionFormat : devFormat,
-  defaultMeta: { service: "carbonsync-backend" },
+  defaultMeta: { service: "EmailJobScheduler" },
   exitOnError: false,
   handleExceptions: false,
   handleRejections: false,
