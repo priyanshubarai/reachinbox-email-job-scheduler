@@ -25,6 +25,10 @@ export interface ReserveSendCapacityInput {
   /** Sender hourly quota. Required together with `senderId` for sender checks. */
   senderHourlyLimit?: number | null;
   tenantHourlyLimit: number;
+  /**
+   * Minimum spacing between two sends. Sender-scoped when `senderId` is set,
+   * otherwise applied tenant-wide (every email for the user).
+   */
   minIntervalMs: number;
   /** Sliding window length. Defaults to 60 minutes; overridable for tests. */
   windowMs?: number;
@@ -147,15 +151,15 @@ if tenantAt > retryAt then
   reason = 'tenant-hourly'
 end
 
--- 3. Sender minimum interval between sends.
-if hasSender then
-  local last = tonumber(redis.call('GET', lastKey) or '0')
-  if last > 0 then
-    local spacingAt = last + minInterval
-    if spacingAt > now and spacingAt > retryAt then
-      retryAt = spacingAt
-      reason = 'sender-spacing'
-    end
+-- 3. Minimum interval between sends.
+-- Scoped to the sender when one is configured, otherwise tenant-wide (the key
+-- is namespaced by user, so this still applies to every email for that user).
+local last = tonumber(redis.call('GET', lastKey) or '0')
+if last > 0 then
+  local spacingAt = last + minInterval
+  if spacingAt > now and spacingAt > retryAt then
+    retryAt = spacingAt
+    reason = 'sender-spacing'
   end
 end
 
@@ -164,13 +168,13 @@ if retryAt > now then
   return {0, retryAt, reason, now}
 end
 
--- 5. Allowed: record the reservation in both sets and the sender timestamp.
+-- 5. Allowed: record the reservation in both sets and the last-send timestamp.
 if hasSender then
   redis.call('ZADD', senderKey, now, emailId)
-  redis.call('SET', lastKey, now)
   redis.call('EXPIRE', senderKey, ttl)
-  redis.call('EXPIRE', lastKey, ttl)
 end
+redis.call('SET', lastKey, now)
+redis.call('EXPIRE', lastKey, ttl)
 redis.call('ZADD', tenantKey, now, emailId)
 redis.call('EXPIRE', tenantKey, ttl)
 
