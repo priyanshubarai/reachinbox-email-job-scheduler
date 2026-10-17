@@ -15,6 +15,13 @@
       "when": 1792060416420,
       "tag": "0001_slimy_pet_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792176436134,
+      "tag": "0002_mute_betty_brant",
+      "breakpoints": true
     }
   ]
 }
